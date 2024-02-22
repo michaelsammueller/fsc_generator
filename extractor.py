@@ -21,10 +21,13 @@ class Extractor:
             for line in content:
                 # If the line starts with 'FP', extract the string after
                 if line.startswith("FP"):
-                    # The callsign is the rest of the line, after removing leftover whitespaces
-                    callsign = line[3:].strip()
+                    # Split the line into words after each space
+                    words = line.split()
+                    # Extract the first word after "FP" as the callsign
+                    callsign = words[1]
+                    # Add the callsign to the list
                     callsigns.append(callsign)
-        
+
             return callsigns
     
     def generate_fsc(self, callsigns):
