@@ -30,8 +30,8 @@ class Extractor:
 
             return callsigns
     
-    def generate_fsc(self, callsigns):
-        """Generates .fsc scripts for correlation"""
+    def generate_fsc_lines(self, callsigns):
+        """Generates .fsc lines for correlation"""
 
         # Template
         template_lines = [
@@ -74,10 +74,29 @@ class Extractor:
         # Get the directory of the original file
         directory = os.path.dirname(path)
 
-        # Construct the ouptut file name
+        # Construct the output file name
         output_file_name = os.path.join(directory, f"{base_name}.fsc")
 
         # Write the generated lines to the output file
         with open(output_file_name, "w") as output_file:
             for line in generated_lines:
+                output_file.write(line + "\n")
+
+    def generate_esc(self, path, all_clear, checked_items):
+        """Generates .esc file"""
+        base_name = os.path.splitext(os.path.basename(path))[0]
+        directory = os.path.dirname(path)
+        output_file_name = os.path.join(directory, f"{base_name}.esc")
+
+        lines = []
+        if all_clear:
+            lines.append("ALL CLEAR TAKE OFF IMMEDIATE")
+        
+        for i, item in enumerate(checked_items, start=1):
+            # Remove the file extension from the item
+            item_without_extension = os.path.splitext(item)[0]
+            lines.append(f"+{i:06d} RUN MACRO {item_without_extension}")
+
+        with open(output_file_name, "w") as output_file:
+            for line in lines:
                 output_file.write(line + "\n")
