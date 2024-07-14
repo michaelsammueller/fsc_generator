@@ -95,7 +95,7 @@ class Extractor:
         for i, item in enumerate(checked_items, start=1):
             # Remove the file extension from the item
             item_without_extension = os.path.splitext(item)[0]
-            lines.append(f"+{i:06d} RUN MACRO {item_without_extension}")
+            lines.append(f"+{i:06d} SUPERVISOR RUNMACRO {item_without_extension}")
 
         with open(output_file_name, "w") as output_file:
             for line in lines:
