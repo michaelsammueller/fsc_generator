@@ -4,9 +4,10 @@
 
 # Imports
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 import os
 from sid_star_allocation import process_excel_file
+from extractor import Extractor
 from squawk import process_dax_file
 
 # UI Class
@@ -22,7 +23,7 @@ class UserInterface:
 
     def create_widgets(self):
         # Create Notebook for Tabs
-        self.notebook = tk.ttk.Notebook(self.root)
+        self.notebook = ttk.Notebook(self.root)
         self.notebook.grid(row=0, column=0, sticky="nsew")
 
         # Tab 1 - Main Page
@@ -44,20 +45,47 @@ class UserInterface:
         self.root.grid_rowconfigure(0, weight=1)
 
     def create_main_page_widgets(self):
-        # DAX file selection
-        tk.Button(self.main_page, text="DAX", command=self.browse_dax).grid(row=0, column=0, padx=10, pady=10)
-        self.dax_label = tk.Label(self.main_page, text="No DAX file selected")
-        self.dax_label.grid(row=0, column=1, padx=10, pady=10)
-
-        # Squawk generation checkbox
+        # Use a frame for the main section
+        main_frame = tk.Frame(self.main_page, padx=20, pady=20)
+        main_frame.grid(row=0, column=0, sticky="nsew")
+        
+        # Add section for DAX file selection
+        dax_frame = tk.LabelFrame(main_frame, text="DAX File Selection", padx=10, pady=10)
+        dax_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=10)
+        tk.Button(dax_frame, text="Select DAX Files", command=self.browse_dax).grid(row=0, column=0, padx=5, pady=5)
+        self.dax_label = tk.Label(dax_frame, text="No DAX file selected")
+        self.dax_label.grid(row=0, column=1, padx=5, pady=5)
         self.squawk_var = tk.BooleanVar()
-        tk.Checkbutton(self.main_page, text="Generate Random Squawks", variable=self.squawk_var).grid(
-            row=1, column=0, padx=10, pady=10
+        tk.Checkbutton(dax_frame, text="Generate Random Squawks", variable=self.squawk_var).grid(
+            row=1, column=0, columnspan=2, pady=5, sticky="w"
         )
-
-        # Generate button
-        tk.Button(self.main_page, text="Generate", command=self.generate_files).grid(
-            row=2, column=0, columnspan=2, padx=10, pady=10
+        
+        # Add section for Airspace folder selection
+        airspace_frame = tk.LabelFrame(main_frame, text="Airspace Selection", padx=10, pady=10)
+        airspace_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=10)
+        tk.Button(airspace_frame, text="Select Airspace Folder", command=self.browse_airspace).grid(row=0, column=0, padx=5, pady=5)
+        self.airspace_label = tk.Label(airspace_frame, text="No airspace selected")
+        self.airspace_label.grid(row=0, column=1, padx=5, pady=5)
+        
+        # Add section for file type selection
+        file_type_frame = tk.LabelFrame(main_frame, text="File Type Selection", padx=10, pady=10)
+        file_type_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=10)
+        self.fsc_var = tk.BooleanVar()
+        tk.Checkbutton(file_type_frame, text=".fsc", variable=self.fsc_var).grid(row=0, column=0, padx=5, pady=5)
+        self.esc_var = tk.BooleanVar()
+        tk.Checkbutton(file_type_frame, text=".esc", variable=self.esc_var).grid(row=0, column=1, padx=5, pady=5)
+        
+        # Add section for script macros
+        macro_frame = tk.LabelFrame(main_frame, text="Script Macros", padx=10, pady=10)
+        macro_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=10)
+        self.macro_list = tk.Listbox(macro_frame, height=5)
+        self.macro_list.pack(fill="both", expand=True)
+        self.immediate_var = tk.BooleanVar()
+        tk.Checkbutton(macro_frame, text="ALL CLEAR TAKEOFF IMMEDIATE", variable=self.immediate_var).pack(pady=5, anchor="w")
+        
+        # Add Generate button
+        tk.Button(main_frame, text="Generate", command=self.generate_files).grid(
+            row=4, column=0, columnspan=2, pady=10
         )
 
     def create_sid_star_page_widgets(self):
@@ -79,6 +107,12 @@ class UserInterface:
             self.selected_dax_files = files[:200]  # Limit to 200 files
             self.update_dax_label()
 
+    def browse_airspace(self):
+        folder = filedialog.askdirectory()
+        if folder:
+            self.airspace_path = folder
+            self.airspace_label.config(text=os.path.basename(folder))
+
     def update_dax_label(self):
         count = len(self.selected_dax_files)
         if count == 0:
@@ -92,6 +126,26 @@ class UserInterface:
         if not self.selected_dax_files:
             messagebox.showerror("Error", "Please select at least one DAX file.")
             return
+
+        # if self.airspace_path == "":
+            # messagebox.showerror("Error", "Please select an airspace folder.")
+            # return
+        
+        # Extract callsigns from th eselected DAX files
+        callsigns = []
+        for dax_file in self.selected_dax_files:
+            callsigns.extend(self.extractor.extract_callsigns(dax_file))
+        
+        # Generate .fsc if checkbox is ticked
+        if self.fsc_var.get():
+            fsc_lines = self.extractor.generate_fsc_lines(callsigns)
+            self.extractor.write_fsc(fsc_lines, self.selected_dax_files[0])  # Use the first DAX file as output path
+        
+        # Generate .esc if checkbox is ticked
+        if self.esc_var.get():
+            checked_items = [self.macro_list.get(i) for i in self.macro_list.curselection()]
+            all_clear = self.immediate_var.get()
+            self.extractor.generate_esc(self.selected_dax_files[0], all_clear, checked_items)
 
         for dax_file in self.selected_dax_files:
             if self.squawk_var.get():

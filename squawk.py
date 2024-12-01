@@ -43,6 +43,6 @@ def process_dax_file(file_path):
 
 # Example usage:
 # Replace 'test.dax' with the path to your .dax file.
-file_path = 'test.dax'  # Replace with your actual .dax file path
+# file_path = 'test.dax'  # Replace with your actual .dax file path
 
-process_dax_file(file_path)
+# process_dax_file(file_path)
