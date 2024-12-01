@@ -1,11 +1,13 @@
 """
-    Contains the user interface class
+    Updated user interface class with SID/STAR allocation and squawk functionality
 """
 
 # Imports
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
+from sid_star_allocation import process_excel_file
+from squawk import process_dax_file
 
 # UI Class
 class UserInterface:
@@ -17,54 +19,60 @@ class UserInterface:
         self.airspace_path = ""
 
         self.create_widgets()
-    
+
     def create_widgets(self):
-        # DAX file selection
-        self.dax_button = tk.Button(self.root, text="DAX", command=self.browse_dax)
-        self.dax_button.grid(row=0, column=0, padx=10, pady=10)
-        self.dax_label = tk.Label(self.root, text="No DAX file selected")
-        self.dax_label.grid(row=0, column=1, padx=10, pady=10)
+        # Create Notebook for Tabs
+        self.notebook = tk.ttk.Notebook(self.root)
+        self.notebook.grid(row=0, column=0, sticky="nsew")
 
-        # Airspace selection
-        self.airspace_button = tk.Button(self.root, text="Airspace", command=self.browse_airspace)
-        self.airspace_button.grid(row=1, column=0, padx=10, pady=10)
-        self.airspace_label = tk.Label(self.root, text="No airspace selected")
-        self.airspace_label.grid(row=1, column=1, padx=10, pady=10)
+        # Tab 1 - Main Page
+        self.main_page = tk.Frame(self.notebook)
+        self.notebook.add(self.main_page, text="Main")
 
-        # File type label
-        self.file_type_label = tk.Label(self.root, text="File type:")
-        self.file_type_label.grid(row=2, column=0, padx=10, pady=5, sticky="w")
+        # Tab 2 - SID/STAR Allocation
+        self.sid_star_page = tk.Frame(self.notebook)
+        self.notebook.add(self.sid_star_page, text="SID/STAR Allocation")
 
-        # File type checkboxes
-        self.fsc_var = tk.BooleanVar()
-        self.fsc_check = tk.Checkbutton(self.root, text=".fsc", variable=self.fsc_var)
-        self.fsc_check.grid(row=3, column=0, padx=10, pady=5, sticky="w")
+        # Widgets for Main Page
+        self.create_main_page_widgets()
 
-        self.esc_var = tk.BooleanVar()
-        self.esc_check = tk.Checkbutton(self.root, text=".esc", variable=self.esc_var)
-        self.esc_check.grid(row=4, column=0, padx=10, pady=5, sticky="w")
-
-        # Script macros label
-        self.script_macros_label = tk.Label(self.root, text="Script Macros:")
-        self.script_macros_label.grid(row=2, column=1, padx=10, pady=5, sticky="w")
-
-        # ALL CLEAR TAKE OFF IMMEDIATE checkbox
-        self.all_clear_var = tk.BooleanVar()
-        self.all_clear_check = tk.Checkbutton(self.root, text="ALL CLEAR TAKE OFF IMMEDIATE", variable=self.all_clear_var)
-        self.all_clear_check.grid(row=3, column=1, columnspan=2, padx=10, pady=5, sticky="w")
-
-        # Checked list box for .dsc files
-        self.dsc_listbox = tk.Listbox(self.root, selectmode=tk.MULTIPLE)
-        self.dsc_listbox.grid(row=4, column=1, columnspan=2, padx=10, pady=10, sticky="nsew")
-
-        # Generate button
-        self.generate_button = tk.Button(self.root, text="Generate", command=self.generate_files)
-        self.generate_button.grid(row=5, column=0, columnspan=2, padx=10, pady=10)
+        # Widgets for SID/STAR Page
+        self.create_sid_star_page_widgets()
 
         # Configure grid
-        self.root.grid_columnconfigure(1, weight=1)
-        self.root.grid_rowconfigure(4, weight=1)
-    
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_rowconfigure(0, weight=1)
+
+    def create_main_page_widgets(self):
+        # DAX file selection
+        tk.Button(self.main_page, text="DAX", command=self.browse_dax).grid(row=0, column=0, padx=10, pady=10)
+        self.dax_label = tk.Label(self.main_page, text="No DAX file selected")
+        self.dax_label.grid(row=0, column=1, padx=10, pady=10)
+
+        # Squawk generation checkbox
+        self.squawk_var = tk.BooleanVar()
+        tk.Checkbutton(self.main_page, text="Generate Random Squawks", variable=self.squawk_var).grid(
+            row=1, column=0, padx=10, pady=10
+        )
+
+        # Generate button
+        tk.Button(self.main_page, text="Generate", command=self.generate_files).grid(
+            row=2, column=0, columnspan=2, padx=10, pady=10
+        )
+
+    def create_sid_star_page_widgets(self):
+        # File selection for SID/STAR Allocation
+        tk.Button(self.sid_star_page, text="Select Excel File", command=self.browse_sid_star_file).grid(
+            row=0, column=0, padx=10, pady=10
+        )
+        self.sid_star_label = tk.Label(self.sid_star_page, text="No Excel file selected")
+        self.sid_star_label.grid(row=0, column=1, padx=10, pady=10)
+
+        # Process button
+        tk.Button(self.sid_star_page, text="Process", command=self.process_sid_star_file).grid(
+            row=1, column=0, columnspan=2, padx=10, pady=10
+        )
+
     def browse_dax(self):
         files = filedialog.askopenfilenames(filetypes=[("DAX files", "*.dax")])
         if files:
@@ -79,39 +87,30 @@ class UserInterface:
             self.dax_label.config(text="1 DAX file selected")
         else:
             self.dax_label.config(text=f"{count} DAX files selected")
-    
-    def browse_airspace(self):
-        folder = filedialog.askdirectory()
-        if folder:
-            self.airspace_path = folder
-            self.airspace_label.config(text=f"Selected: {os.path.basename(folder)}")
-            self.load_dsc_files()
-    
-    def load_dsc_files(self):
-        self.dsc_listbox.delete(0, tk.END)
-        if os.path.exists(self.airspace_path):
-            dsc_files = [f for f in os.listdir(self.airspace_path) if f.endswith('.dsc')]
-            for file in dsc_files:
-                self.dsc_listbox.insert(tk.END, file)
-        else:
-            messagebox.showerror("Error", f"Directory not found: {self.airspace_path}")
-    
+
     def generate_files(self):
         if not self.selected_dax_files:
             messagebox.showerror("Error", "Please select at least one DAX file.")
             return
-    
+
         for dax_file in self.selected_dax_files:
-            if self.fsc_var.get():
-                callsigns = self.extractor.extract_callsigns(dax_file)
-                fsc_lines = self.extractor.generate_fsc_lines(callsigns)
-                self.extractor.write_fsc(fsc_lines, dax_file)
-            
-            if self.esc_var.get():
-                checked_items = [self.dsc_listbox.get(idx) for idx in self.dsc_listbox.curselection()]
-                self.extractor.generate_esc(dax_file, self.all_clear_var.get(), checked_items)
-        
-        messagebox.showinfo("Success", "Files generated successfully.")
-    
+            if self.squawk_var.get():
+                process_dax_file(dax_file)
+
+        messagebox.showinfo("Success", "Files processed successfully.")
+
+    def browse_sid_star_file(self):
+        file = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
+        if file:
+            self.sid_star_file_path = file
+            self.sid_star_label.config(text=f"Selected: {os.path.basename(file)}")
+
+    def process_sid_star_file(self):
+        if hasattr(self, "sid_star_file_path"):
+            process_excel_file(self.sid_star_file_path)
+            messagebox.showinfo("Success", "SID/STAR Allocation processed successfully.")
+        else:
+            messagebox.showerror("Error", "Please select an Excel file.")
+
     def run(self):
         self.root.mainloop()
