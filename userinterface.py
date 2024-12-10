@@ -112,6 +112,18 @@ class UserInterface:
         if folder:
             self.airspace_path = folder
             self.airspace_label.config(text=os.path.basename(folder))
+            self.populate_macro_list(folder)
+
+    def populate_macro_list(self, folder):
+        """Populate the macro list with .dsc files from the selected airspace folder"""
+        # Clear existing items
+        self.macro_list.delete(0, tk.END)
+        
+        # Walk through the directory and find all .dsc files
+        for root, _, files in os.walk(folder):
+            for file in files:
+                if file.endswith('.dsc'):
+                    self.macro_list.insert(tk.END, file)
 
     def update_dax_label(self):
         count = len(self.selected_dax_files)

@@ -3,9 +3,17 @@ import random
 def generate_unique_squawk(existing_codes):
     """
     Generates a unique 4-digit squawk code that does not exist in the provided set.
+    Codes starting with 8 or 9 are excluded.
     """
     while True:
-        code = random.randint(1000, 9999)
+        # Generate first digit (1-7 only)
+        first_digit = random.randint(1, 7)
+        # Generate remaining 3 digits (0-9)
+        remaining_digits = [random.randint(0, 9) for _ in range(3)]
+        
+        # Combine digits into a single code
+        code = first_digit * 1000 + remaining_digits[0] * 100 + remaining_digits[1] * 10 + remaining_digits[2]
+        
         if code not in existing_codes:
             existing_codes.add(code)
             return code
